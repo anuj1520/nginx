@@ -257,10 +257,10 @@ typedef struct {
 #endif
 
     ngx_str_t                        module;
-    int                              socket_rcvbuf;
-    int                              socket_sndbuf;
+    size_t                           socket_rcvbuf;
+    size_t                           socket_sndbuf;
 
-    NGX_COMPAT_BEGIN(5)
+    NGX_COMPAT_BEGIN(3)
     NGX_COMPAT_END
 } ngx_http_upstream_conf_t;
 
@@ -444,8 +444,6 @@ ngx_http_upstream_srv_conf_t *ngx_http_upstream_add(ngx_conf_t *cf,
     ngx_url_t *u, ngx_uint_t flags);
 char *ngx_http_upstream_bind_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
-char *ngx_http_upstream_socket_buffer_set_slot(ngx_conf_t *cf,
-    ngx_command_t *cmd, void *conf);
 char *ngx_http_upstream_param_set_slot(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 ngx_int_t ngx_http_upstream_hide_headers_hash(ngx_conf_t *cf,
