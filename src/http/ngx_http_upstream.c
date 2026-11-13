@@ -2673,56 +2673,55 @@ ngx_http_upstream_process_early_hints(ngx_http_request_t *r,
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http upstream early hints");
 
+    u->early_hints_length += u->buffer.pos - u->buffer.start;
+
+    if (u->early_hints_length > (off_t) u->conf->buffer_size) {
+        ngx_log_error(NGX_LOG_ERR, c->log, 0,
+                      "upstream sent too big early hints");
+        return NGX_HTTP_UPSTREAM_INVALID_HEADER;
+    }
+
     if (u->conf->pass_early_hints) {
 
-        u->early_hints_length += u->buffer.pos - u->buffer.start;
+        part = &u->headers_in.headers.part;
+        h = part->elts;
 
-        if (u->early_hints_length <= (off_t) u->conf->buffer_size) {
+        for (i = 0; /* void */; i++) {
 
-            part = &u->headers_in.headers.part;
-            h = part->elts;
-
-            for (i = 0; /* void */; i++) {
-
-                if (i >= part->nelts) {
-                    if (part->next == NULL) {
-                        break;
-                    }
-
-                    part = part->next;
-                    h = part->elts;
-                    i = 0;
+            if (i >= part->nelts) {
+                if (part->next == NULL) {
+                    break;
                 }
 
-                if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
-                                  h[i].lowcase_key, h[i].key.len))
-                {
-                    continue;
-                }
-
-                ho = ngx_list_push(&r->headers_out.headers);
-                if (ho == NULL) {
-                    return NGX_ERROR;
-                }
-
-                *ho = h[i];
+                part = part->next;
+                h = part->elts;
+                i = 0;
             }
 
-            if (ngx_http_send_early_hints(r) == NGX_ERROR) {
+            if (ngx_hash_find(&u->conf->hide_headers_hash, h[i].hash,
+                              h[i].lowcase_key, h[i].key.len))
+            {
+                continue;
+            }
+
+            ho = ngx_list_push(&r->headers_out.headers);
+            if (ho == NULL) {
                 return NGX_ERROR;
             }
 
-            if (c->buffered) {
-                if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-                    return NGX_ERROR;
-                }
+            *ho = h[i];
+        }
 
-                r->write_event_handler = ngx_http_upstream_early_hints_writer;
+        if (ngx_http_send_early_hints(r) == NGX_ERROR) {
+            return NGX_ERROR;
+        }
+
+        if (c->buffered) {
+            if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+                return NGX_ERROR;
             }
 
-        } else {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "upstream sent too big early hints");
+            r->write_event_handler = ngx_http_upstream_early_hints_writer;
         }
     }
 
